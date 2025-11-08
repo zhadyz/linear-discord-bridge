@@ -20,9 +20,16 @@ function verifyLinearSignature(payload, signature) {
     return true;
   }
   
+  console.log('Verifying signature...');
+  console.log('Received signature:', signature);
+  console.log('Secret (first 10 chars):', LINEAR_SIGNING_SECRET.substring(0, 10) + '...');
+  
   const hmac = crypto.createHmac('sha256', LINEAR_SIGNING_SECRET);
   hmac.update(payload);
   const expectedSignature = hmac.digest('hex');
+  
+  console.log('Expected signature:', expectedSignature);
+  console.log('Signatures match:', signature === expectedSignature);
   
   return signature === expectedSignature;
 }
@@ -122,28 +129,41 @@ app.get('/', (req, res) => {
   res.json({ 
     status: 'running',
     message: 'Linear to Discord webhook bridge is active',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    config: {
+      hasSigningSecret: !!LINEAR_SIGNING_SECRET,
+      hasDiscordWebhook: !!DISCORD_WEBHOOK_URL
+    }
   });
 });
 
 app.post('/webhook', async (req, res) => {
   try {
+    console.log('=== Webhook received ===');
+    console.log('Headers:', JSON.stringify(req.headers, null, 2));
+    
     const signature = req.headers['linear-signature'];
+    
+    if (!signature) {
+      console.error('No signature header found!');
+      return res.status(401).json({ error: 'No signature provided' });
+    }
+    
     if (!verifyLinearSignature(req.rawBody, signature)) {
       console.error('Invalid signature');
       return res.status(401).json({ error: 'Invalid signature' });
     }
     
-    console.log('Signature verified');
+    console.log('Signature verified successfully');
     
     const event = req.body;
-    console.log('Received event:', event.type, event.action);
+    console.log('Event type:', event.type, 'Action:', event.action);
     
     const discordMessage = formatDiscordMessage(event);
     
     if (DISCORD_WEBHOOK_URL) {
       await axios.post(DISCORD_WEBHOOK_URL, discordMessage);
-      console.log('Sent to Discord');
+      console.log('Sent to Discord successfully');
     } else {
       console.warn('No DISCORD_WEBHOOK_URL set');
     }
@@ -152,13 +172,17 @@ app.post('/webhook', async (req, res) => {
     
   } catch (error) {
     console.error('Error processing webhook:', error.message);
+    console.error('Stack:', error.stack);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 app.listen(PORT, () => {
-  console.log('Linear to Discord bridge running on port ' + PORT);
-  console.log('Webhook endpoint: http://localhost:' + PORT + '/webhook');
-  console.log('Signature verification: ' + (LINEAR_SIGNING_SECRET ? 'ENABLED' : 'DISABLED'));
-  console.log('Discord webhook: ' + (DISCORD_WEBHOOK_URL ? 'CONFIGURED' : 'NOT SET'));
+  console.log('=== Linear to Discord Bridge ===');
+  console.log('Port:', PORT);
+  console.log('Signing secret configured:', !!LINEAR_SIGNING_SECRET);
+  console.log('Discord webhook configured:', !!DISCORD_WEBHOOK_URL);
+  if (LINEAR_SIGNING_SECRET) {
+    console.log('Secret prefix:', LINEAR_SIGNING_SECRET.substring(0, 10) + '...');
+  }
 });
