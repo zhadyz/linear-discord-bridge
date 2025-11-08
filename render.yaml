@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: linear-discord-bridge
+    env: node
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: LINEAR_SIGNING_SECRET
+        sync: false
+      - key: DISCORD_WEBHOOK_URL
+        sync: false
+    healthCheckPath: /
