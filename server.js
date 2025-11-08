@@ -72,10 +72,28 @@ function formatDiscordMessage(event) {
     if (issue.assignee && issue.assignee.name) {
       description += '\n**Assignee:** ' + issue.assignee.name;
     }
-    
+
+    // Show delegate/agent information
+    if (issue.delegate && issue.delegate.name) {
+      description += '\n**🤖 Agent:** ' + issue.delegate.name;
+    }
+
     if (issue.priority !== undefined) {
       const priorities = ['None', '🔥 Urgent', '⬆️ High', '➡️ Normal', '⬇️ Low'];
       description += '\n**Priority:** ' + (priorities[issue.priority] || 'Unknown');
+    }
+
+    // Show labels
+    if (issue.labels && issue.labels.length > 0) {
+      const labelNames = issue.labels.map(label => label.name).join(', ');
+      description += '\n**Labels:** ' + labelNames;
+    }
+
+    // Show who made the change
+    if (action === 'update' && issue.updatedBy && issue.updatedBy.name) {
+      description += '\n**Updated by:** ' + issue.updatedBy.name;
+    } else if (action === 'create' && issue.createdBy && issue.createdBy.name) {
+      description += '\n**Created by:** ' + issue.createdBy.name;
     }
     
     if (action === 'update' && issue.description && issue.description.includes('MENDICANT_BIAS')) {
